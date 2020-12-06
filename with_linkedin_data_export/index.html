@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+    .links line {
+        stroke: #999;
+        stroke-opacity: 0.6;
+    }
+
+    .nodes circle {
+        stroke: #fff;
+        stroke-width: 1.5px;
+    }
+
+    text {
+        font-family: sans-serif;
+        font-size: 10px;
+    }
+</style>
+<svg height="0"></svg>
+<p><h1>Visualize your LinkedIn Connection</h1></p>
+<p><a href="https://www.linkedin.com/help/linkedin/answer/66844/export-connections-from-linkedin">
+    Export your Connections from LinkedIn</a></p>
+<p>Then import the csv file here: *</p>
+<input id="csv" type="file">
+<p>* you made need to remove the headers from the csv file </p>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-csv/1.0.11/jquery.csv.min.js"></script>
+<script>
+    var fileInput = document.getElementById("csv");
+    var nodes = [];
+    var links = [];
+
+    readFile = function () {
+        var reader = new FileReader();
+        reader.onload = function () {
+            connections = $.csv.toObjects(reader.result);
+            console.log(connections);
+
+            nodes.push({
+                "firstName": "You",
+                "lastName": "",
+                "name": "You",
+                "company": ""
+            });
+
+            for (source of connections) {
+                sourceName = source["First Name"] + " " + source["Last Name"];
+
+                links.push({
+                    "source": "You",
+                    "target": sourceName
+                });
+
+                nodes.push({
+                    "firstName": source["First Name"],
+                    "lastName": source["Last Name"],
+                    "name": sourceName,
+                    "company": source["Company"]
+                });
+
+                for (target of connections) {
+                    targetName = target["First Name"] + " " + target["Last Name"];
+                    if (sourceName != targetName && source["Company"] == target["Company"]) {
+                        links.push({
+                            "source": sourceName,
+                            "target": targetName
+                        });
+                    }
+                }
+            }
+
+            graph = {
+                "nodes": nodes,
+                "links": links
+            }
+
+            console.log(graph);
+            render(graph);
+
+        };
+        reader.readAsBinaryString(fileInput.files[0]);
+    };
+
+    fileInput.addEventListener('change', readFile);
+
+    var simulation;
+
+    /*
+     * Modified from D3.js v4 Force Directed Graph with Labels
+     * https://bl.ocks.org/heybignick/3faf257bbbbc7743bb72310d03b86ee8
+    */
+    function render(graph) {
+        var width = $(window).width();
+        var height = $(window).height();
+
+        var svg = d3.select("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+        simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(function (d) { return d.name; }))
+            .force("charge", d3.forceManyBody().strength(-100).distanceMax(0.3 * Math.min(width, height)))
+            .force("center", d3.forceCenter(width / 2, height / 2));
+
+        var link = svg.append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(graph.links)
+            .enter().append("line")
+            .attr("stroke-width", function (d) { return color(d.company); });
+
+        var node = svg.append("g")
+            .attr("class", "nodes")
+            .selectAll("g")
+            .data(graph.nodes)
+            .enter().append("g")
+
+        var circles = node.append("circle")
+            .attr("r", 5)
+            .attr("fill", function(d) { return color(d.company); })
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        var lables = node.append("text")
+            .text(function (d) {
+                return d.firstName;
+            })
+            .attr('x', 6)
+            .attr('y', 3);
+
+        node.append("title")
+            .text(function (d) { return d.company; });
+
+        simulation
+            .nodes(graph.nodes)
+            .on("tick", ticked);
+
+        simulation.force("link")
+            .links(graph.links);
+
+        function ticked() {
+            link
+                .attr("x1", function (d) { return d.source.x; })
+                .attr("y1", function (d) { return d.source.y; })
+                .attr("x2", function (d) { return d.target.x; })
+                .attr("y2", function (d) { return d.target.y; });
+
+            node
+                .attr("transform", function (d) {
+                    return "translate(" + d.x + "," + d.y + ")";
+                })
+        }
+    }
+
+    function dragstarted(d) {
+        if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    function dragged(d) {
+        d.fx = d3.event.x;
+        d.fy = d3.event.y;
+    }
+
+    function dragended(d) {
+        if (!d3.event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+
+</script>
