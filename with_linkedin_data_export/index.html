@@ -17,12 +17,12 @@
     }
 </style>
 <svg height="0"></svg>
-<p><h1>Visualize your LinkedIn Connection</h1></p>
-<p><a href="https://www.linkedin.com/help/linkedin/answer/66844/export-connections-from-linkedin">
+<p><h1>Visualize your LinkedIn Connections</h1></p>
+<p><a href="https://www.linkedin.com/help/linkedin/answer/66844/export-connections-from-linkedin" target="_blank">
     Export your Connections from LinkedIn</a></p>
 <p>Then import the csv file here: *</p>
 <input id="csv" type="file">
-<p>* you made need to remove the headers from the csv file </p>
+<p>* you may need to remove the LinkedIn's notes from the csv file </p>
 
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -129,7 +129,7 @@
 
         var lables = node.append("text")
             .text(function (d) {
-                return d.firstName;
+                return d.name;
             })
             .attr('x', 6)
             .attr('y', 3);
