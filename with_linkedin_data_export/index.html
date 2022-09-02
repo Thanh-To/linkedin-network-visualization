@@ -28,15 +28,17 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-csv/1.0.11/jquery.csv.min.js"></script>
 <script>
-    var fileInput = document.getElementById("csv");
-    var nodes = [];
-    var links = [];
+    const LINKED_IN_CSV_HEADER = 'First Name,Last Name,Email Address,Company';
+    const MINIMUM_COMPANY_SIZE = 3;
+    const fileInput = document.getElementById("csv");
+    const nodes = [];
+    const links = [];
 
     readFile = function () {
-        var reader = new FileReader();
+        const reader = new FileReader();
         reader.onload = function () {
-            connections = $.csv.toObjects(reader.result);
-            console.log(connections);
+            const result = reader.result.substring(reader.result.search(LINKED_IN_CSV_HEADER));
+            const connections = $.csv.toObjects(result);
 
             nodes.push({
                 "firstName": "You",
@@ -45,28 +47,44 @@
                 "company": ""
             });
 
+            const companyCountMap = new Map([]);
             for (source of connections) {
-                sourceName = source["First Name"] + " " + source["Last Name"];
+                const company = source["Company"];
+                if (companyCountMap.has(company)) {
+                    companyCountMap.set(
+                        company,
+                        companyCountMap.get(company)+1
+                    )
+                } else {
+                    companyCountMap.set(company, 1);
+                }
+            }
 
-                links.push({
-                    "source": "You",
-                    "target": sourceName
-                });
+            for (source of connections) {
+                const sourceName = source["First Name"] + " " + source["Last Name"];
+                const sourceCompany = source["Company"];
 
-                nodes.push({
-                    "firstName": source["First Name"],
-                    "lastName": source["Last Name"],
-                    "name": sourceName,
-                    "company": source["Company"]
-                });
+                if (companyCountMap.get(sourceCompany) >= MINIMUM_COMPANY_SIZE) {
+                    links.push({
+                        "source": "You",
+                        "target": sourceName
+                    });
 
-                for (target of connections) {
-                    targetName = target["First Name"] + " " + target["Last Name"];
-                    if (sourceName != targetName && source["Company"] == target["Company"]) {
-                        links.push({
-                            "source": sourceName,
-                            "target": targetName
-                        });
+                    nodes.push({
+                        "firstName": source["First Name"],
+                        "lastName": source["Last Name"],
+                        "name": sourceName,
+                        "company": sourceCompany
+                    });
+
+                    for (target of connections) {
+                        targetName = target["First Name"] + " " + target["Last Name"];
+                        if (sourceName != targetName && sourceCompany == target["Company"]) {
+                            links.push({
+                                "source": sourceName,
+                                "target": targetName
+                            });
+                        }
                     }
                 }
             }
@@ -76,7 +94,6 @@
                 "links": links
             }
 
-            console.log(graph);
             render(graph);
 
         };
@@ -92,34 +109,34 @@
      * https://bl.ocks.org/heybignick/3faf257bbbbc7743bb72310d03b86ee8
     */
     function render(graph) {
-        var width = $(window).width();
-        var height = $(window).height();
+        const width = $(window).width();
+        const height = $(window).height();
 
-        var svg = d3.select("svg")
+        const svg = d3.select("svg")
             .attr("width", width)
             .attr("height", height);
 
-        var color = d3.scaleOrdinal(d3.schemeCategory20);
+        const color = d3.scaleOrdinal(d3.schemeCategory20);
 
         simulation = d3.forceSimulation()
             .force("link", d3.forceLink().id(function (d) { return d.name; }))
-            .force("charge", d3.forceManyBody().strength(-100).distanceMax(0.3 * Math.min(width, height)))
+            .force("charge", d3.forceManyBody().strength(-100).distanceMax(0.2 * Math.min(width, height)))
             .force("center", d3.forceCenter(width / 2, height / 2));
 
-        var link = svg.append("g")
+        const link = svg.append("g")
             .attr("class", "links")
             .selectAll("line")
             .data(graph.links)
             .enter().append("line")
             .attr("stroke-width", function (d) { return color(d.company); });
 
-        var node = svg.append("g")
+        const node = svg.append("g")
             .attr("class", "nodes")
             .selectAll("g")
             .data(graph.nodes)
             .enter().append("g")
 
-        var circles = node.append("circle")
+        const circles = node.append("circle")
             .attr("r", 5)
             .attr("fill", function(d) { return color(d.company); })
             .call(d3.drag()
@@ -127,7 +144,7 @@
                 .on("drag", dragged)
                 .on("end", dragended));
 
-        var lables = node.append("text")
+        const lables = node.append("text")
             .text(function (d) {
                 return d.name;
             })
